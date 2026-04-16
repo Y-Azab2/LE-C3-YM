@@ -69,7 +69,6 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 // Add your other wire declarations here
 
 	wire w0_load, w1_load, w2_load, w3_load, w0_transfer, w1_transfer, w2_transfer, w3_transfer, w0, w1, w2, w3;
-	wire bus_load, bus_transfer;
 
 // Add your other wire declarations here
 
@@ -105,20 +104,9 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 // - The bus for operandB is controlled by SW[1:0]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 // - The destination is controlled by SW[9:8]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 
-	assign w0 = w0_load | w0_transfer;
-	assign w1 = w1_load | w1_transfer;
-	assign w2 = w2_load | w2_transfer;
-	assign w3 = w3_load | w3_transfer;
-
-	load_function key0(w0_load, w1_load, w2_load, w3_load, SW[9:8], buttons);	
-	transfer_function key1(w0_transfer, w1_transfer, w2_transfer, w3_transfer, SW[9:8], transfer, function_out, buttons);
+	load_function key0(w0, w1, w2, w3, SW[9:8], buttons);	
+	transfer_function key1(w0, w1, w2, w3, SW[9:8], buttons);
 	operand_select operandSelect(operandA, operandB, val0, val1, val2, val3, SW[3:2], SW[1:0], buttons);
-	
-	assign bus_transfer = w0_transfer | w1_transfer | w2_transfer | w3_transfer;
-	assign bus_load = w0_load | w1_load | w2_load | w3_load;
-	
-	tsg_8bit(transfer, bus_transfer, bus);
-	tsg_8bit(SW[7:0], bus_load, bus);
 
 // Instantiate your FUNCTION UNIT here.
 // - The inputs of the instance MUST BE wires called operandA and operandB.
@@ -126,9 +114,7 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 // - The status outputs of the instance MUST be wires called V, C, N, Z.
 // - The operation performed by the Function unit is controlled by SW[7:4].
 
-	function_unit functionUnit(function_out, V, C, N, Z, operandA, operandB, SW[7:4]);
-	
-	assign result = function_out;
+	function_unit functionUnit(result, V, C, N, Z, operandA, operandB, SW[7:4]);
 
 // This instance of the 8-bit 2-to-1 multiplexer buses the switches and the Function Unit result to the registers.
 // - The destination register should receive the result from the Function Unit when KEY1 is pressed.
@@ -259,15 +245,11 @@ module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel, button);
 	
 endmodule
 
-module transfer_function(rA, rB, rC, rL, destination, transfer, function_out, button);
+module transfer_function(rA, rB, rC, rL, destination, button);
 	input [1:0] destination, button;
-	input [7:0] function_out;
 	output rA, rB, rC, rL;
-	output [7:0] transfer;
 	
 	wire dA, dB, dC, dL;
-	
-	assign transfer = function_out;
 	
 	decoder de3(dA, dB, dC, dL, destination);
 
