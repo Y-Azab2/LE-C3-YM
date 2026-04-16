@@ -97,24 +97,6 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 	register8bit r1(MAX10_CLK1_50, w1,         bus,             val1);
 	register8bit r2(MAX10_CLK1_50, w2,         bus,             val2);
 	register8bit r3(MAX10_CLK1_50, w3,         bus,             val3);
-	
-	load_function key0(w0_load, w1_load, w2_load, w3_load, SW[9:8], buttons);	
-	transfer_function key1(w0_transfer, w1_transfer, w2_transfer, w3_transfer, SW[9:8], transfer, function_out, buttons);
-	operand_select operandSelect(operandA, operandB, val0, val1, val2, val3, SW[3:2], SW[1:0], buttons);
-	function_unit functionUnit(function_out, V, C, N, Z, operandA, operandB, SW[7:4]);
-	
-	assign w0 = w0_load | w0_transfer;
-	assign w1 = w1_load | w1_transfer;
-	assign w2 = w2_load | w2_transfer;
-	assign w3 = w3_load | w3_transfer;
-	
-	assign bus_transfer = w0_transfer | w1_transfer | w2_transfer | w3_transfer;
-	assign bus_load = w0_load | w1_load | w2_load | w3_load;
-	
-	tsg_8bit(transfer, bus_transfer, bus);
-	tsg_8bit(SW[7:0], bus_load, bus);
-	
-	assign result = function_out;
 
 // Instantiate your bus hardware here. You may also use continuous assignments as needed.
 // - The inputs of your operand buses are the register outputs (val#)
@@ -122,6 +104,85 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 // - The bus for operandA is controlled by SW[3:2]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 // - The bus for operandB is controlled by SW[1:0]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 // - The destination is controlled by SW[9:8]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
+
+	assign w0 = w0_load | w0_transfer;
+	assign w1 = w1_load | w1_transfer;
+	assign w2 = w2_load | w2_transfer;
+	assign w3 = w3_load | w3_transfer;
+
+	load_function key0(w0_load, w1_load, w2_load, w3_load, SW[9:8], buttons);	
+	transfer_function key1(w0_transfer, w1_transfer, w2_transfer, w3_transfer, SW[9:8], transfer, function_out, buttons);
+	operand_select operandSelect(operandA, operandB, val0, val1, val2, val3, SW[3:2], SW[1:0], buttons);
+	
+	assign bus_transfer = w0_transfer | w1_transfer | w2_transfer | w3_transfer;
+	assign bus_load = w0_load | w1_load | w2_load | w3_load;
+	
+	tsg_8bit(transfer, bus_transfer, bus);
+	tsg_8bit(SW[7:0], bus_load, bus);
+
+// Instantiate your FUNCTION UNIT here.
+// - The inputs of the instance MUST BE wires called operandA and operandB.
+// - The result output of the instance MUST BE a wire called result.
+// - The status outputs of the instance MUST be wires called V, C, N, Z.
+// - The operation performed by the Function unit is controlled by SW[7:4].
+
+	function_unit functionUnit(function_out, V, C, N, Z, operandA, operandB, SW[7:4]);
+	
+	assign result = function_out;
+
+// This instance of the 8-bit 2-to-1 multiplexer buses the switches and the Function Unit result to the registers.
+// - The destination register should receive the result from the Function Unit when KEY1 is pressed.
+// - The destination register should receive the value from SW[7:0] when KEY0 is pressed.
+// DO NOT CHANGE THIS INSTANTIATION!
+
+   mux2to1_8bit m1(buttons[0], result, SW[7:0], bus);		
+
+// Review the hardware description for the hexDecoder_7seg module in hexDecoder_7seg.v.
+// HEX5/HEX4 must display the value of OperandA, which also comes from your operand bus.
+// HEX3/HEX2 must display the value of OperandB, which also comes from your operand bus.
+// HEX1/HEX0 must display the result output of the function unit.
+// DO NOT CHANGE THESE INSTANTIATIONS!
+
+//                    Upper Hex Display  Lower Hex Display  Register Value
+	hexDecoder_7seg h1(HEX5,              HEX4,              operandA);
+	hexDecoder_7seg h2(HEX3,              HEX2,              operandB);
+	hexDecoder_7seg h3(HEX1,              HEX0,              result);
+
+	
+// The LEDs must display the status output of the Function Unit
+// DO NOT CHANGE THIS CONTINUOUS ASSIGNMENT! 
+
+	assign LEDR = {6'b000000, V, C, N, Z};
+	
+// END TOP-LEVEL HARDWARE MODEL //
+
+endmodule
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//	Module: mux2to1_8bit
+// 8-bit 2-to-1 multiplexer for use in the top-level module
+//
+//	Created by Jason Thweatt, 04 November 2019
+//
+// **************************
+// DO NOT MODIFY THIS MODULE!
+// **************************
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+module mux2to1_8bit(select, in0, in1, out);
+   input        select;
+   input  [7:0] in0;
+   input  [7:0] in1;
+   output [7:0] out;
+	
+	assign out = (select == 1'b0) ? in0 :
+	             (select == 1'b1) ? in1 : 8'bxxxxxxxx;
+
+endmodule
+
+// Write the remaining hardware models that you instantiate into the top-level module starting here.
 
 module tsg_8bit(in, en, out);
    input  [7:0] in;		// 8-bit input
@@ -199,7 +260,7 @@ module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel, button);
 endmodule
 
 module transfer_function(rA, rB, rC, rL, destination, transfer, function_out, button);
-	input [1:0] destination, source, button;
+	input [1:0] destination, button;
 	input [7:0] function_out;
 	output rA, rB, rC, rL;
 	output [7:0] transfer;
@@ -216,12 +277,6 @@ module transfer_function(rA, rB, rC, rL, destination, transfer, function_out, bu
 	assign rL = dL & button[1];
 	
 endmodule
-
-// Instantiate your FUNCTION UNIT here.
-// - The inputs of the instance MUST BE wires called operandA and operandB.
-// - The result output of the instance MUST BE a wire called result.
-// - The status outputs of the instance MUST be wires called V, C, N, Z.
-// - The operation performed by the Function unit is controlled by SW[7:4].
 
 module function_unit (result, V, C, N, Z, OpA, OpB, FS);
   input [3:0] FS;
@@ -382,59 +437,4 @@ module block1 (result, OpB, sel);
 					(sel == 4'b1011) ? div :
 					(sel == 4'b1100) ? mult : 8'bx;
 	
-endmodule	
-
-// This instance of the 8-bit 2-to-1 multiplexer buses the switches and the Function Unit result to the registers.
-// - The destination register should receive the result from the Function Unit when KEY1 is pressed.
-// - The destination register should receive the value from SW[7:0] when KEY0 is pressed.
-// DO NOT CHANGE THIS INSTANTIATION!
-
-   mux2to1_8bit m1(buttons[0], result, SW[7:0], bus);		
-
-// Review the hardware description for the hexDecoder_7seg module in hexDecoder_7seg.v.
-// HEX5/HEX4 must display the value of OperandA, which also comes from your operand bus.
-// HEX3/HEX2 must display the value of OperandB, which also comes from your operand bus.
-// HEX1/HEX0 must display the result output of the function unit.
-// DO NOT CHANGE THESE INSTANTIATIONS!
-
-//                    Upper Hex Display  Lower Hex Display  Register Value
-	hexDecoder_7seg h1(HEX5,              HEX4,              operandA);
-	hexDecoder_7seg h2(HEX3,              HEX2,              operandB);
-	hexDecoder_7seg h3(HEX1,              HEX0,              result);
-
-	
-// The LEDs must display the status output of the Function Unit
-// DO NOT CHANGE THIS CONTINUOUS ASSIGNMENT! 
-
-	assign LEDR = {6'b000000, V, C, N, Z};
-	
-// END TOP-LEVEL HARDWARE MODEL //
-
 endmodule
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//	Module: mux2to1_8bit
-// 8-bit 2-to-1 multiplexer for use in the top-level module
-//
-//	Created by Jason Thweatt, 04 November 2019
-//
-// **************************
-// DO NOT MODIFY THIS MODULE!
-// **************************
-//
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-module mux2to1_8bit(select, in0, in1, out);
-   input        select;
-   input  [7:0] in0;
-   input  [7:0] in1;
-   output [7:0] out;
-	
-	assign out = (select == 1'b0) ? in0 :
-	             (select == 1'b1) ? in1 : 8'bxxxxxxxx;
-
-endmodule
-
-// Write the remaining hardware models that you instantiate into the top-level module starting here.
-
