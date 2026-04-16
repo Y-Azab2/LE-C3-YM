@@ -277,7 +277,7 @@ module function_unit (result, V, C, N, Z, OpA, OpB, FS);
 	assign w0 = (FS[3] & ~FS[2] & ~FS[1]) | (FS[3] & ~FS[1] & FS[0]) | (~FS[3] & FS[2] & FS[1] & FS[0]);
 
 	block2 arith(sel2, carry, cout, FS, OpA, OpB);
-	block1 misc(sel1, OpB, FS);
+	block1 misc(sel1, OpA, OpB, FS);
 	block0 logic(sel0, OpA, OpB, FS);
 
 	assign result = (w2 == 1'b1) ? sel2 :
@@ -370,11 +370,11 @@ module block0 (result, OpA, OpB, sel);
 endmodule
 
 // Block 1 C1b - NEEDS TO BE MODIFIED
-module block1 (result, OpB, sel);
+module block1 (result, OpA, OpB, sel);
 	input [3:0] sel;
 	input [7:0] OpB;
 	output [7:0] result;
-	wire [7:0] div, mult, shift;
+	wire [7:0] div, mult, shift, notA;
 	// Replace this assign statement with your Verilog code.
 	// The operation of the arithmetic circuit is defined in the  specification.
 
@@ -408,11 +408,20 @@ module block1 (result, OpB, sel);
 	assign mult[6] = OpB[2];
 	assign mult[7] = OpB[3];
 	
+	assign notA[0] = ~OpA[0];
+	assign notA[1] = ~OpA[1];
+	assign notA[2] = ~OpA[2];
+	assign notA[3] = ~OpA[3];
+	assign notA[4] = ~OpA[4];
+	assign notA[5] = ~OpA[5];
+	assign notA[6] = ~OpA[6];
+	assign notA[7] = ~OpA[7];
 	// Selects the output
 
 	// 1010 shift, 1011 div4, 1100 mult16
 	assign result = (sel == 4'b1010) ? shift :
 					(sel == 4'b1011) ? div :
+					(sel == 4'b1111) ? notA :
 					(sel == 4'b1100) ? mult : 8'bx;
 	
 endmodule
