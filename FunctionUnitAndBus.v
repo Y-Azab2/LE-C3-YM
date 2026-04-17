@@ -376,7 +376,7 @@ module block0 (result, OpA, OpB, sel);
 	assign select[1] = (sel[3] & ~sel[2] & ~sel[1] & sel[0]) | (sel[3] & sel[2] & ~sel[1] & sel[0]);
 	assign select[0] = (sel[3] & ~sel[2] & ~sel[1] & ~sel[0]) | (sel[3] & sel[2] & ~sel[1] & sel[0]);
 	// 0111 AND, 1000 OR, 1001 XOR, 1101 XNOR
-	mux4x1 b2mux(result, select, and1, or1, xor1, xnor1)
+	mux4x1 b2mux(result, select, and1, or1, xor1, xnor1);
 endmodule
 
 // Block 1 C1b - NEEDS TO BE MODIFIED
