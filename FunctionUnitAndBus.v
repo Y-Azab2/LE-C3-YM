@@ -104,14 +104,9 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 // - The bus for operandB is controlled by SW[1:0]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 // - The destination is controlled by SW[9:8]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 
-	load_function key0(w0_load, w1_load, w2_load, w3_load, SW[9:8], buttons);	
-	transfer_function key1(w0_transfer, w1_transfer, w2_transfer, w3_transfer, SW[9:8], buttons);
-	operand_select operandSelect(operandA, operandB, val0, val1, val2, val3, SW[3:2], SW[1:0]);
-	
-	assign w0 = w0_load | w0_transfer;
-	assign w1 = w1_load | w1_transfer;
-	assign w2 = w2_load | w2_transfer;
-	assign w3 = w3_load | w3_transfer;
+	load_function key0(w0, w1, w2, w3, SW[9:8], buttons);	
+	transfer_function key1(w0, w1, w2, w3, SW[9:8], buttons);
+	operand_select operandSelect(operandA, operandB, val0, val1, val2, val3, SW[3:2], SW[1:0], buttons);
 
 // Instantiate your FUNCTION UNIT here.
 // - The inputs of the instance MUST BE wires called operandA and operandB.
@@ -220,9 +215,9 @@ module load_function(r0, r1, r2, rL, S, button);
 	
 endmodule
 
-module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel);
+module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel, button);
 	input [7:0] r0, r1, r2, r3;
-	input [1:0] a_sel, b_sel;
+	input [1:0] a_sel, b_sel, button;
 	output [7:0] OpA, OpB;
 	
 	wire w0, w1, w2, w3, w4, w5, w6, w7, en0, en1, en2, en3, en4, en5, en6, en7;
@@ -230,14 +225,23 @@ module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel);
 	decoder ASELECT(w0, w1, w2, w3, a_sel);
 	decoder BSELECT(w4, w5, w6, w7, b_sel);
 	
-	tsg_8bit(r0, w0, OpA);
-	tsg_8bit(r1, w1, OpA);
-	tsg_8bit(r2, w2, OpA);
-	tsg_8bit(r3, w3, OpA);
-	tsg_8bit(r0, w4, OpB);
-	tsg_8bit(r1, w5, OpB);
-	tsg_8bit(r2, w6, OpB);
-	tsg_8bit(r3, w7, OpB);
+	assign en0 = w0 & button[1];
+	assign en1 = w1 & button[1];
+	assign en2 = w2 & button[1];
+	assign en3 = w3 & button[1];
+	assign en4 = w4 & button[1];
+	assign en5 = w5 & button[1];
+	assign en6 = w6 & button[1];
+	assign en7 = w7 & button[1];
+	
+	tsg_8bit(r0, en0, OpA);
+	tsg_8bit(r1, en1, OpA);
+	tsg_8bit(r2, en2, OpA);
+	tsg_8bit(r3, en3, OpA);
+	tsg_8bit(r4, en4, OpB);
+	tsg_8bit(r5, en5, OpB);
+	tsg_8bit(r6, en6, OpB);
+	tsg_8bit(r7, en7, OpB);
 	
 endmodule
 
@@ -271,8 +275,8 @@ module function_unit (result, V, C, N, Z, OpA, OpB, FS);
 	
 	// 0100 movA, 0011 add, 0010 subAB, 0001 incA, 0101 negB, 0110 dec3B
 	assign w2 = (~FS[3] & ~FS[1]) | (~FS[3] & ~FS[2]) | (FS[2] & FS[1] & ~FS[0]);
-	// 1010 shift, 1011 div4, 1100 mult16
-	assign w1 = (FS[3] & ~FS[2] & FS[1]) | (FS[3] & FS[2] & ~FS[1] & ~FS[0]);
+	// 1010 shift, 1011 div4, 1100 mult16, 1111 notA
+	assign w1 = (FS[3] & ~FS[2] & FS[1]) | (FS[3] & FS[2] & ~FS[1] & ~FS[0]) | (FS[3] & FS[1] & FS[0]);
 	// 0111 AND, 1000 OR, 1001 XOR, 1101 XNOR
 	assign w0 = (FS[3] & ~FS[2] & ~FS[1]) | (FS[3] & ~FS[1] & FS[0]) | (~FS[3] & FS[2] & FS[1] & FS[0]);
 
@@ -313,7 +317,7 @@ module block2(result, carry, cout, sel, A, B);
 	assign cin = (~sel[3] & ~sel[2] & sel[1] & ~sel[0]) | (~sel[3] & ~sel[2] & ~sel[1] & sel[0]) | (~sel[3] & sel[2] & ~sel[1] & sel[0]);
 		
 	mux4x1 MUXA(w1, sA, A, eight_zero, neg3,  eight_one);
-	mux4x1 MUXB(w2, sB, B, ~B, eight_zero, eight_one);   
+	mux4x1 MUXB(w2, sB, B, ~B, eight_zero, eight_one);
 
 	eightbitadder main(result, w1, w2, carry, cout, cin);
 endmodule
@@ -361,12 +365,18 @@ module block0 (result, OpA, OpB, sel);
 	input [3:0] sel;
 	input [7:0] OpA, OpB;
 	output [7:0] result;
+	wire [7:0] and1, or1, xor1, xnor1;
+	wire[1:0] select;
+	
+	assign and1 = (OpA & OpB);
+	assign or1 = (OpA | OpB);
+	assign xor1 = (OpA ^ OpB);
+	assign xnor1 = ~(OpA ^ OpB);
 
+	assign select[1] = (sel[3] & ~sel[2] & ~sel[1] & sel[0]) | (sel[3] & sel[2] & ~sel[1] & sel[0]);
+	assign select[0] = (sel[3] & ~sel[2] & ~sel[1] & ~sel[0]) | (sel[3] & sel[2] & ~sel[1] & sel[0]);
 	// 0111 AND, 1000 OR, 1001 XOR, 1101 XNOR
-	assign result = (sel == 4'b0111) ? (OpA & OpB) :
-					(sel == 4'b1000) ? (OpA | OpB) :
-					(sel == 4'b1001) ? (OpA ^ OpB) :
-					(sel == 4'b1101) ? ~(OpA ^ OpB) : 8'bx;
+	mux4x1 b2mux(result, select, and1, or1, xor1, xnor1)
 endmodule
 
 // Block 1 C1b - NEEDS TO BE MODIFIED
@@ -375,6 +385,7 @@ module block1 (result, OpA, OpB, sel);
 	input [7:0] OpB;
 	output [7:0] result;
 	wire [7:0] div, mult, shift, notA;
+	wire [1:0] select;
 	// Replace this assign statement with your Verilog code.
 	// The operation of the arithmetic circuit is defined in the  specification.
 
@@ -408,6 +419,7 @@ module block1 (result, OpA, OpB, sel);
 	assign mult[6] = OpB[2];
 	assign mult[7] = OpB[3];
 	
+	// Implements notA
 	assign notA[0] = ~OpA[0];
 	assign notA[1] = ~OpA[1];
 	assign notA[2] = ~OpA[2];
@@ -418,10 +430,14 @@ module block1 (result, OpA, OpB, sel);
 	assign notA[7] = ~OpA[7];
 	// Selects the output
 
-	// 1010 shift, 1011 div4, 1100 mult16
-	assign result = (sel == 4'b1010) ? shift :
-					(sel == 4'b1011) ? div :
-					(sel == 4'b1111) ? notA :
-					(sel == 4'b1100) ? mult : 8'bx;
+	// 1010 shift, 1011 div4, 1100 mult16, 1111 notA
+	// assign result = (sel == 4'b1010) ? shift :
+	// 				(sel == 4'b1011) ? div :
+	// 				(sel == 4'b1111) ? notA :
+	// 				(sel == 4'b1100) ? mult : 8'bx;
+	assign select[1] = (sel[3] & sel[2] & ~sel[1] & ~sel[0]) | (sel[3] & sel[2] & sel[1] & sel[0]);
+	assign select[0] = (sel[3] & ~sel[2] & sel[1] & sel[0]) | (sel[3] & sel[2] & sel[1] & sel[0]);
+
+	mux4x1 b1mux(result, select, shift, div, mult, notA);
 	
 endmodule
