@@ -9,6 +9,8 @@
 // The FunctionUnitandBus module should contain both your function unit and your bus control logic.
 //
 // Modified by: KLC, 14 Jan 2026 - switch mapping
+// Modified by: Youssef Azab and Miles Riley - LE C3 Completion
+// 
 // 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -289,7 +291,7 @@ module function_unit (result, V, C, N, Z, OpA, OpB, FS);
 					(w0 == 1'b1) ? sel0 : 8'bx;
   
 	assign V = carry ^ cout;
-	assign C = ~(carry ^ cout);
+	assign C = carry & w2;
 	assign N = result[7] & ~(FS[3] & ~FS[2] & FS[1] & ~FS[0]);
 	assign Z = ~result[7] & ~result[6] & ~result[5] & ~result[4] & ~result[3] & ~result[2] & ~result[1] & ~result[0];
 endmodule
