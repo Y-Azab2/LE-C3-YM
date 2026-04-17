@@ -15,10 +15,10 @@
 // DO NOT MODIFY THE MODULE AND PORT DECLARATIONs OF THIS MODULE!
 
 module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
-	input        MAX10_CLK1_50;									// System clock
+	input  MAX10_CLK1_50;												// System clock
 	input  [1:0] KEY;													// DE10 Pushbuttons
 	input  [9:0] SW;													// DE10 Switches 
-	output [6:0] HEX0;												// DE10 Seven-segment displays
+	output [6:0] HEX0;													// DE10 Seven-segment displays
 	output [6:0] HEX1;
 	output [6:0] HEX2;
 	output [6:0] HEX3;
@@ -423,5 +423,5 @@ module block1 (result, OpA, OpB, sel);
 					(sel == 4'b1011) ? div :
 					(sel == 4'b1111) ? notA :
 					(sel == 4'b1100) ? mult : 8'bx;
-	
+						
 endmodule
