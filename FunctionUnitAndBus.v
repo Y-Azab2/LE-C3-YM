@@ -63,7 +63,7 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 
 // This value represents the output of the bus that loads the registers.
 
-	wire [7:0] bus, transfer, function_out /* synthesis keep */ ; 						// DO NOT MODIFY!
+	wire [7:0] bus, transfer /* synthesis keep */ ; 						// DO NOT MODIFY!
 	
 // You MAY alter this wire declarations if you wish, or even delete it entirely.
 // What you replace it with will depend on your design.
@@ -106,9 +106,14 @@ module FunctionUnitAndBus(MAX10_CLK1_50, KEY, SW, HEX0, HEX1, HEX2, HEX3, HEX4, 
 // - The bus for operandB is controlled by SW[1:0]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 // - The destination is controlled by SW[9:8]: 00 - r0; 01 - r1; 10 - r2; 11 - r3.
 
-	load_function key0(w0, w1, w2, w3, SW[9:8], buttons);	
-	transfer_function key1(w0, w1, w2, w3, SW[9:8], buttons);
-	operand_select operandSelect(operandA, operandB, val0, val1, val2, val3, SW[3:2], SW[1:0], buttons);
+	load_function key0(w0_load, w1_load, w2_load, w3_load, SW[9:8], buttons);	
+	transfer_function key1(w0_transfer, w1_transfer, w2_transfer, w3_transfer, SW[9:8], buttons);
+	operand_select operandSelect(operandA, operandB, val0, val1, val2, val3, SW[3:2], SW[1:0]);
+	
+	assign w0 = w0_load | w0_transfer;
+	assign w1 = w1_load | w1_transfer;
+	assign w2 = w2_load | w2_transfer;
+	assign w3 = w3_load | w3_transfer;
 
 // Instantiate your FUNCTION UNIT here.
 // - The inputs of the instance MUST BE wires called operandA and operandB.
@@ -217,9 +222,9 @@ module load_function(r0, r1, r2, rL, S, button);
 	
 endmodule
 
-module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel, button);
+module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel);
 	input [7:0] r0, r1, r2, r3;
-	input [1:0] a_sel, b_sel, button;
+	input [1:0] a_sel, b_sel;
 	output [7:0] OpA, OpB;
 	
 	wire w0, w1, w2, w3, w4, w5, w6, w7, en0, en1, en2, en3, en4, en5, en6, en7;
@@ -227,23 +232,14 @@ module operand_select(OpA, OpB, r0, r1, r2, r3, a_sel, b_sel, button);
 	decoder ASELECT(w0, w1, w2, w3, a_sel);
 	decoder BSELECT(w4, w5, w6, w7, b_sel);
 	
-	assign en0 = w0 & button[1];
-	assign en1 = w1 & button[1];
-	assign en2 = w2 & button[1];
-	assign en3 = w3 & button[1];
-	assign en4 = w4 & button[1];
-	assign en5 = w5 & button[1];
-	assign en6 = w6 & button[1];
-	assign en7 = w7 & button[1];
-	
-	tsg_8bit(r0, en0, OpA);
-	tsg_8bit(r1, en1, OpA);
-	tsg_8bit(r2, en2, OpA);
-	tsg_8bit(r3, en3, OpA);
-	tsg_8bit(r4, en4, OpB);
-	tsg_8bit(r5, en5, OpB);
-	tsg_8bit(r6, en6, OpB);
-	tsg_8bit(r7, en7, OpB);
+	tsg_8bit(r0, w0, OpA);
+	tsg_8bit(r1, w1, OpA);
+	tsg_8bit(r2, w2, OpA);
+	tsg_8bit(r3, w3, OpA);
+	tsg_8bit(r0, w4, OpB);
+	tsg_8bit(r1, w5, OpB);
+	tsg_8bit(r2, w6, OpB);
+	tsg_8bit(r3, w7, OpB);
 	
 endmodule
 
@@ -384,7 +380,7 @@ endmodule
 // Block 1 C1b - NEEDS TO BE MODIFIED
 module block1 (result, OpA, OpB, sel);
 	input [3:0] sel;
-	input [7:0] OpB;
+	input [7:0] OpB, OpA;
 	output [7:0] result;
 	wire [7:0] div, mult, shift, notA;
 	wire [1:0] select;
