@@ -290,7 +290,7 @@ module function_unit (result, V, C, N, Z, OpA, OpB, FS);
   
 	assign V = carry ^ cout;
 	assign C = ~(carry ^ cout);
-	assign N = result[7];
+	assign N = result[7] & ~(FS[3] & ~FS[2] & FS[1] & ~FS[0]);
 	assign Z = ~result[7] & ~result[6] & ~result[5] & ~result[4] & ~result[3] & ~result[2] & ~result[1] & ~result[0];
 endmodule
 
@@ -399,15 +399,15 @@ module block1 (result, OpA, OpB, sel);
 	assign shift[6] = OpB[5];
 	assign shift[7] = OpB[6];
 	
-	// Implements div4
+	// Implements div4 - changed to work with signed numbers
 	assign div[0] = OpB[2];
 	assign div[1] = OpB[3];
 	assign div[2] = OpB[4];
 	assign div[3] = OpB[5];
 	assign div[4] = OpB[6];
 	assign div[5] = OpB[7];
-	assign div[6] = 1'b0;
-	assign div[7] = 1'b0;
+	assign div[6] = OpB[7];
+	assign div[7] = OpB[7];
 	
 	// Implements mult16
 	assign mult[0] = 1'b0;
